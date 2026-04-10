@@ -4,7 +4,10 @@ database.py — SQLite persistence for Swipe Swap.
 
 import sqlite3
 import os
+import logging
 from datetime import datetime
+
+logger = logging.getLogger(__name__)
 
 DB_PATH = os.environ.get("DB_PATH", "swipe_swap.db")
 
@@ -52,8 +55,46 @@ def get_conn():
     return conn
 
 def init_db():
-    with get_conn() as conn:
-        conn.executescript(SCHEMA)
+    conn = get_conn()
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            phone       TEXT PRIMARY KEY,
+            role        TEXT DEFAULT 'unknown',
+            state       TEXT DEFAULT 'new',
+            seen        INTEGER DEFAULT 0,
+            on_updates  INTEGER DEFAULT 0,
+            availability TEXT,
+            created_at  TEXT DEFAULT (datetime('now'))
+        )
+    """)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS requests (
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            receiver_phone  TEXT NOT NULL,
+            hall            TEXT NOT NULL,
+            req_time        TEXT NOT NULL,
+            req_day         TEXT NOT NULL,
+            status          TEXT DEFAULT 'pending',
+            donor_phone     TEXT,
+            created_at      TEXT DEFAULT (datetime('now')),
+            fulfilled_at    TEXT,
+            expires_at      TEXT NOT NULL
+        )
+    """)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS donor_offers (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            request_id  INTEGER NOT NULL,
+            donor_phone TEXT NOT NULL,
+            sent_at     TEXT DEFAULT (datetime('now')),
+            response    TEXT,
+            responded_at TEXT,
+            UNIQUE(request_id, donor_phone)
+        )
+    """)
+    conn.commit()
+    conn.close()
+    logger.info("Database initialized")
 
 # ---------------------------------------------------------------------------
 # User helpers
