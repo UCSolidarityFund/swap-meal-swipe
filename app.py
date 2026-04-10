@@ -160,7 +160,9 @@ def sms_webhook():
     from_number = request.form.get("From", "").strip()
     body        = request.form.get("Body", "").strip()
     resp        = MessagingResponse()
+    logger.warning("SMS in — from=%s body=%r", from_number, body)
     reply       = handle_message(from_number, body)
+    logger.warning("SMS reply — from=%s reply=%r", from_number, reply)
     if reply:
         resp.message(reply)
     return Response(str(resp), mimetype="text/xml")
