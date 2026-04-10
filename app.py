@@ -136,7 +136,8 @@ def send_sms(to: str, body: str):
 @app.route("/sms", methods=["POST"])
 def sms_webhook():
     # Validate the request actually came from Twilio.
-    if TWILIO_AUTH_TOKEN:
+    skip_validation = os.environ.get("SKIP_TWILIO_VALIDATION", "").lower() in ("1", "true", "yes")
+    if TWILIO_AUTH_TOKEN and not skip_validation:
         from twilio.request_validator import RequestValidator
         validator = RequestValidator(TWILIO_AUTH_TOKEN)
         params    = request.form.to_dict()
