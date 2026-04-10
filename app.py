@@ -43,8 +43,8 @@ twilio_client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN) if TWILIO_ACCOUNT_
 # ---------------------------------------------------------------------------
 WELCOME_MSG = (
     "Welcome to the @UConnSolidarityFund meal swipe swap! "
-    "Text 'Solidarity' to volunteer, or a dining hall + time to request a swipe "
-    "(ex: South 12pm). Text 'Hours', 'Mission statement', or 'Updates' for more. "
+    "Text 'Solidarity' to volunteer, or a dining hall + time in 15-min increments to request a swipe "
+    "(ex: South 12pm, McMahon 8:15am). Text 'Hours', 'Mission statement', or 'Updates' for more. "
     "Reply STOP to opt out."
 )
 
