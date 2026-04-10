@@ -8,6 +8,7 @@ import re
 import logging
 from datetime import datetime, time, timedelta
 from flask import Flask, request, Response, session, redirect, url_for
+from werkzeug.middleware.proxy_fix import ProxyFix
 from twilio.twiml.messaging_response import MessagingResponse
 from apscheduler.schedulers.background import BackgroundScheduler
 from twilio.rest import Client
@@ -18,6 +19,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
+app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)  # trust Railway's proxy headers so request.url is https://
 db.init_db()  # ensure tables exist however the app is started (gunicorn, python, etc.)
 
 # Session signing key — generate a random one with: python3 -c "import secrets; print(secrets.token_hex(32))"
