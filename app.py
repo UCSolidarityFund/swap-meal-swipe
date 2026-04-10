@@ -167,6 +167,24 @@ def handle_message(phone: str, body: str) -> str | None:
         db.mark_seen(phone)
         return WELCOME_MSG
 
+    if lower in ("stop", "stopall", "unsubscribe", "quit"):
+        db.set_state(phone, "idle")
+        db.remove_from_updates(phone)
+        return (
+            "You have been unsubscribed from all messages. "
+            "Text 'Solidarity Fund' at any time to re-enroll."
+        )
+
+    if lower == "help":
+        return (
+            "UConn Solidarity Fund Meal Swipe Swap\n"
+            "Text 'Solidarity Fund' to see all options.\n"
+            "Text STOP to unsubscribe.\n"
+            "For support: @UConnSolidarityFund on Instagram or "
+            "email [your email here].\n"
+            "Msg & data rates may apply."
+        )
+
     if lower == "hours":
         return HOURS_MSG
 
