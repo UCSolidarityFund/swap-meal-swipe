@@ -18,6 +18,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
+db.init_db()  # ensure tables exist however the app is started (gunicorn, python, etc.)
 
 # Session signing key — generate a random one with: python3 -c "import secrets; print(secrets.token_hex(32))"
 # Must be set in production env or sessions won't survive restarts.
