@@ -139,15 +139,22 @@ def sms_webhook():
     if TWILIO_AUTH_TOKEN:
         from twilio.request_validator import RequestValidator
         validator = RequestValidator(TWILIO_AUTH_TOKEN)
-        # Force https:// — Railway terminates TLS at the edge and forwards HTTP
-        # internally, so request.url may show http:// even with ProxyFix.
-        url = request.url.replace("http://", "https://", 1)
         params    = request.form.to_dict()
         signature = request.headers.get("X-Twilio-Signature", "")
-        logger.info("Twilio validation — url=%s sig=%s…", url, signature[:8] if signature else "")
+        # Build canonical URL: always https, no non-standard port.
+        # Railway terminates TLS at the edge, app sees http:// on internal port.
+        host = request.headers.get("X-Forwarded-Host") or request.host
+        # Strip port if present (Railway public endpoint is 443, no port needed)
+        host = host.split(":")[0]
+        url  = f"https://{host}{request.path}"
+        if request.query_string:
+            url += "?" + request.query_string.decode()
+        logger.warning("Twilio validate — url=%s params=%s sig=%s…",
+                       url, sorted(params.keys()), signature[:12] if signature else "")
         if not validator.validate(url, params, signature):
-            logger.warning("Rejected request with invalid Twilio signature — url=%s", url)
+            logger.warning("REJECTED invalid Twilio signature — url=%s", url)
             return Response("Forbidden", status=403)
+        logger.warning("Twilio signature OK")
 
     from_number = request.form.get("From", "").strip()
     body        = request.form.get("Body", "").strip()
