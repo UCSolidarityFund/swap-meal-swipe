@@ -7,7 +7,7 @@ import os
 import re
 import logging
 from datetime import datetime, time, timedelta
-from flask import Flask, request, Response
+from flask import Flask, request, Response, session, redirect, url_for
 from twilio.twiml.messaging_response import MessagingResponse
 from apscheduler.schedulers.background import BackgroundScheduler
 from twilio.rest import Client
@@ -18,6 +18,16 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
+
+# Session signing key — generate a random one with: python3 -c "import secrets; print(secrets.token_hex(32))"
+# Must be set in production env or sessions won't survive restarts.
+app.secret_key = os.environ.get("SECRET_KEY") or os.urandom(32)
+if not os.environ.get("SECRET_KEY"):
+    logger.warning("SECRET_KEY not set — sessions will reset on every restart")
+
+# Simulator gate — set a long random string in the env to enable the test UI.
+# Leave unset (or empty) in production to disable it entirely.
+SIMULATOR_KEY = os.environ.get("SIMULATOR_KEY", "")
 
 # ---------------------------------------------------------------------------
 # Twilio client (credentials from env)
@@ -126,6 +136,17 @@ def send_sms(to: str, body: str):
 # ---------------------------------------------------------------------------
 @app.route("/sms", methods=["POST"])
 def sms_webhook():
+    # Validate the request actually came from Twilio.
+    if TWILIO_AUTH_TOKEN:
+        from twilio.request_validator import RequestValidator
+        validator = RequestValidator(TWILIO_AUTH_TOKEN)
+        url       = request.url
+        params    = request.form.to_dict()
+        signature = request.headers.get("X-Twilio-Signature", "")
+        if not validator.validate(url, params, signature):
+            logger.warning("Rejected request with invalid Twilio signature")
+            return Response("Forbidden", status=403)
+
     from_number = request.form.get("From", "").strip()
     body        = request.form.get("Body", "").strip()
     resp        = MessagingResponse()
@@ -508,12 +529,68 @@ function addMsg(panel, text, cls, note) {
 </html>
 """
 
+def _sim_enabled():
+    return bool(SIMULATOR_KEY)
+
+def _sim_authed():
+    return session.get("sim_authed") is True
+
+_LOGIN_HTML_TMPL = (
+    '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">'
+    "<title>Simulator Login</title><style>"
+    "body{font-family:system-ui,sans-serif;display:flex;align-items:center;"
+    "justify-content:center;height:100vh;margin:0;background:#f0f0f0}"
+    "form{background:white;padding:2rem;border-radius:8px;"
+    "box-shadow:0 2px 8px rgba(0,0,0,.15);display:flex;flex-direction:column;"
+    "gap:1rem;min-width:280px}"
+    "h2{margin:0;color:#c00;font-size:1.1rem}"
+    "input{padding:8px 12px;border:1px solid #ccc;border-radius:4px;font-size:1rem}"
+    "button{background:#c00;color:white;border:none;padding:10px;"
+    "border-radius:4px;cursor:pointer;font-size:1rem}"
+    ".err{color:#c00;font-size:.85rem}"
+    '</style></head><body>'
+    '<form method="POST" action="/sim-login">'
+    "<h2>Swipe Swap &mdash; Simulator</h2>"
+    '<input name="key" type="password" placeholder="Simulator key" autofocus required>'
+    "<button type=\"submit\">Enter</button>"
+    "<!--ERROR_SLOT-->"
+    "</form></body></html>"
+)
+
+def _login_page(error=""):
+    return _LOGIN_HTML_TMPL.replace(
+        "<!--ERROR_SLOT-->",
+        f'<p class="err">{error}</p>' if error else ""
+    )
+
 @app.route("/")
 def simulator_ui():
+    if not _sim_enabled():
+        return Response("Not found", status=404)
+    if not _sim_authed():
+        return _login_page(), 200, {"Content-Type": "text/html"}
     return SIMULATOR_HTML
+
+@app.route("/sim-login", methods=["POST"])
+def sim_login():
+    if not _sim_enabled():
+        return Response("Not found", status=404)
+    key = request.form.get("key", "")
+    if key == SIMULATOR_KEY:
+        session["sim_authed"] = True
+        return redirect(url_for("simulator_ui"), 303)
+    return _login_page("Wrong key."), 401, {"Content-Type": "text/html"}
+
+@app.route("/sim-logout")
+def sim_logout():
+    session.clear()
+    return redirect(url_for("simulator_ui"))
 
 @app.route("/simulate", methods=["POST"])
 def simulate():
+    if not _sim_enabled() or not _sim_authed():
+        return Response("Forbidden", status=403)
+
     from flask import g
     data    = request.get_json()
     phone   = data.get("phone", "").strip()
