@@ -48,7 +48,7 @@ WELCOME_MSG = (
     "Welcome to the @UConnSolidarityFund meal swipe swap! "
     "Text 'Solidarity' to volunteer, or a dining hall + time in 15-min increments to request a swipe "
     "(ex: South 12pm, McMahon 8:15am). Text 'Hours', 'Mission statement', or 'Updates' for more. "
-    "Reply STOP to opt out."
+    "Reply STOP to cancel, HELP for help. Msg & data rates may apply. Msg frequency varies."
 )
 
 MISSION_MSG = (
