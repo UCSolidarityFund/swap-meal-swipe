@@ -69,7 +69,7 @@ MISSION_MSG = (
 UPDATES_MSG = (
     "Great! We will occasionally send text updates on relevant demonstrations as well "
     "as our mutual aid and education events/initiatives. For more updates, check out our "
-    "Instagram. Text 'cancel' to stop these messages."
+    "Instagram. Reply STOP to unsubscribe."
 )
 
 HOURS_MSG = (
@@ -225,7 +225,11 @@ def handle_message(phone: str, body: str) -> str | None:
         return handle_cancel_confirm(phone, lower)
 
     # ---- Cancel keyword ----
-    if lower == "cancel":
+    # NOTE: 'cancel' is a CTIA-mandated carrier-level opt-out keyword;
+    # it is intercepted by carriers before reaching this webhook. We use
+    # 'withdraw' instead so users can cancel a swap request without
+    # being unsubscribed from the program entirely.
+    if lower == "withdraw":
         return handle_cancel(phone)
 
     # ---- Y/N from a donor ----
@@ -277,7 +281,7 @@ def handle_receiver_request(phone: str, parsed: dict) -> str:
     db.set_state(phone, f"receiver_waiting:{request_id}")
     return (
         "Currently waiting for a response; may take up to 30 minutes to get a response. "
-        "Text 'cancel' at any time to cancel your request."
+        "Text 'withdraw' at any time to cancel your request."
     )
 
 
@@ -318,7 +322,7 @@ def handle_donor_response(phone: str, answer: str) -> str:
     return (
         f"Your meeting for {hall} at {t} has been confirmed. The recipient will meet you "
         f"at the dining hall entrance. You can identify each other by holding up a fist "
-        f"and/or saying 'Solidarity'. Text 'cancel' at any time to cancel."
+        f"and/or saying 'Solidarity'. Text 'withdraw' at any time to cancel."
     )
 
 
