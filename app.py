@@ -182,10 +182,7 @@ def handle_message(phone: str, body: str) -> str | None:
     if lower in ("stop", "stopall", "unsubscribe", "quit"):
         db.set_state(phone, "idle")
         db.remove_from_updates(phone)
-        return (
-            "You have been unsubscribed from all messages. "
-            "Text 'Solidarity Fund' at any time to re-enroll."
-        )
+        return None
 
     if lower == "help":
         return (
